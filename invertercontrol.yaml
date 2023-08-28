@@ -1,0 +1,131 @@
+id: "1689074846878"
+alias: Emhass Inverter Control
+description: Controls a goodwe 10ET inverter
+trigger:
+  - platform: state
+    entity_id:
+      - sensor.emhass_mode
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 10
+    enabled: true
+  - platform: state
+    entity_id:
+      - sensor.p_batt_forecast
+condition: []
+action:
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: charge
+    then:
+      - service: select.select_option
+        data:
+          option: eco_charge
+        target:
+          entity_id: select.inverter_operation_mode
+      - service: number.set_value
+        data:
+          value:
+            "{%if states('sensor.p_batt_forecast') | float(0) >= 0 %}   {{states('sensor.p_batt_forecast')
+            | float /10000 |float * 100}} {%else%}   {{states('sensor.p_batt_forecast')
+            | float /-10000 |float * 100}} {% endif %}"
+        target:
+          entity_id: number.eco_mode_power
+      - service: number.set_value
+        data:
+          value: "100"
+        target:
+          entity_id: number.eco_mode_soc
+    alias: Charge
+    enabled: true
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: discharge
+    then:
+      - service: select.select_option
+        data:
+          option: eco_discharge
+        target:
+          entity_id: select.inverter_operation_mode
+      - service: number.set_value
+        data:
+          value:
+            "{%if states('sensor.p_batt_forecast') | float(0) >= 0 %}   {{states('sensor.p_batt_forecast')
+            | float /10000 |float * 100}} {%else%}   {{states('sensor.p_batt_forecast')
+            | float /-10000 |float * 100}} {% endif %}"
+        target:
+          entity_id: number.eco_mode_power
+      - service: number.set_value
+        data:
+          value: "10"
+        target:
+          entity_id: number.eco_mode_soc
+    alias: Discharge
+    enabled: true
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: backup
+    then:
+      - service: select.select_option
+        data:
+          option: backup
+        target:
+          entity_id: select.inverter_operation_mode
+    alias: Backup
+    enabled: true
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: general
+    then:
+      - service: select.select_option
+        data:
+          option: general
+        target:
+          entity_id: select.inverter_operation_mode
+    alias: general
+    enabled: true
+  - service: input_text.set_value
+    data:
+      value: "{{states('sensor.emhass_mode')}}"
+    target:
+      entity_id: input_text.emhass_automation_mode
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: exporting_solar
+    then:
+      - service: select.select_option
+        data:
+          option: eco_discharge
+        target:
+          entity_id: select.inverter_operation_mode
+      - service: number.set_value
+        data:
+          value: "1"
+        target:
+          entity_id: number.eco_mode_power
+      - service: number.set_value
+        data:
+          value: "100"
+        target:
+          entity_id: number.eco_mode_soc
+    alias: Export Solar
+    enabled: true
+  - if:
+      - condition: state
+        entity_id: sensor.emhass_mode
+        state: forced_offgrid
+    then:
+      - service: select.select_option
+        data:
+          option: off_grid
+        target:
+          entity_id: select.inverter_operation_mode
+    alias: Backup
+    enabled: true
+mode: single
