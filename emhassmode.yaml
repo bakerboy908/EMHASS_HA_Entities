@@ -1,0 +1,33 @@
+sensor:
+  - unique_id: emhass_mode
+    name: "EMHASS Mode"
+    state: >-
+      {%set bat_power = states('sensor.p_batt_forecast') | float %} 
+      {%set load = states('sensor.p_load_forecast') | float%}
+      {%set grid = states('sensor.p_grid_forecast') | float%}    
+      {%set solar = states('sensor.p_pv_forecast') | float %}
+      {% set time = states('sensor.time') %}
+      {%set FIT = states('sensor.balgownie_feed_in_price')|float%}
+      {%set  BAT_SOC = states('sensor.battery_state_of_charge')|float%}
+
+
+
+
+      {%set min_FIT = 0.09 %}
+      {% set demand_Peak_Start = '15:45'%}
+      {% set deman_Peak_End = '20:15'%}
+      {%set peak_Period = demand_Peak_Start < time < deman_Peak_End %}
+
+      {% if bat_power + load < 0 and grid > 0 and not peak_Period %}
+        charge 
+      {% elif bat_power - load > 0 and grid < 0 and solar <= 500 and FIT > min_FIT%}
+        discharge
+      {% elif bat_power >= 0 and grid < 0 and BAT_SOC < 95 and FIT >= 0 %}
+        exporting_solar 
+      {% elif BAT_SOC < 90 and FIT < 0 %}
+        forced_offgrid
+      {% elif bat_power <= 0 and grid > 0 %}
+        backup 
+      {% else %} 
+        general 
+      {%- endif %}
